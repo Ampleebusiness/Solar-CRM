@@ -1,6 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { SELLER_STATES, SELLER_STATE_TO_CITIES } from '../../data/sellerStatesCities';
+import { SOLAR_ENDPOINTS } from '../../config/api';
+import { fetchSolarStates, fetchSolarCities } from '../../api/solarLocations';
+
+const modalToggleEyeBtnStyle = {
+  position: 'absolute',
+  right: 8,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  width: 36,
+  height: 36,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  color: '#666',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 6,
+};
 
 const PHONE_DIGITS_ONLY = /^\d+$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -9,7 +30,7 @@ function digitsOnly(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
-function validateForm(values) {
+function validateForm(values, cityOptions) {
   const errors = {};
 
   const fullName = String(values.fullName || '').trim();
@@ -19,6 +40,9 @@ function validateForm(values) {
   if (!phoneDigits) errors.phone = 'Phone Number is required.';
   else if (!PHONE_DIGITS_ONLY.test(phoneDigits)) errors.phone = 'Phone must contain digits only.';
   else if (phoneDigits.length !== 10) errors.phone = 'Phone must be exactly 10 digits.';
+  else if (!/^[6-9]\d{9}$/.test(phoneDigits)) {
+    errors.phone = 'Enter a valid Indian mobile number (starts with 6–9).';
+  }
 
   const email = String(values.email || '').trim();
   if (!email) errors.email = 'Email is required.';
@@ -27,35 +51,92 @@ function validateForm(values) {
   const address = String(values.address || '').trim();
   if (!address) errors.address = 'Address is required.';
 
-  const state = String(values.state || '').trim();
-  if (!state) errors.state = 'State is required.';
+  const stateId = String(values.stateId || '').trim();
+  if (!stateId) errors.stateId = 'State is required.';
 
-  const cities = SELLER_STATE_TO_CITIES[state] || [];
-  const city = String(values.city || '').trim();
-  if (!city) errors.city = 'City is required.';
-  else if (!cities.includes(city)) errors.city = 'Please select a city from the dropdown.';
+  const cityId = String(values.cityId || '').trim();
+  if (!cityId) errors.cityId = 'City is required.';
+  else if (!cityOptions.some((c) => String(c.id) === cityId)) {
+    errors.cityId = 'Please select a city from the dropdown.';
+  }
+
+  const password = String(values.password || '');
+  if (!password) errors.password = 'Password is required.';
+  else if (password.length < 6) errors.password = 'Password must be at least 6 characters.';
 
   return errors;
 }
 
 export default function SellerRegistrationModal() {
-  const { sellerRegistrationOpen, closeSellerRegistration, loginAsSeller, auth } = useAuth();
+  const navigate = useNavigate();
+  const { sellerRegistrationOpen, closeSellerRegistration, auth } = useAuth();
   const [form, setForm] = useState({
     fullName: '',
     phone: '',
     email: '',
     address: '',
-    state: '',
-    city: '',
+    stateId: '',
+    cityId: '',
+    password: '',
   });
+
+  const [statesList, setStatesList] = useState([]);
+  const [citiesList, setCitiesList] = useState([]);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [locationsError, setLocationsError] = useState(null);
 
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const stateCities = SELLER_STATE_TO_CITIES[form.state] || [];
+  useEffect(() => {
+    if (!sellerRegistrationOpen) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        setStatesLoading(true);
+        setLocationsError(null);
+        const list = await fetchSolarStates();
+        if (!cancelled) setStatesList(list);
+      } catch {
+        if (!cancelled) {
+          setStatesList([]);
+          setLocationsError('Could not load states. Please try again.');
+        }
+      } finally {
+        if (!cancelled) setStatesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerRegistrationOpen]);
 
-  const errors = useMemo(() => validateForm(form), [form]);
+  useEffect(() => {
+    if (!sellerRegistrationOpen || !form.stateId) {
+      setCitiesList([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setCitiesLoading(true);
+        const list = await fetchSolarCities(form.stateId);
+        if (!cancelled) setCitiesList(list);
+      } catch {
+        if (!cancelled) setCitiesList([]);
+      } finally {
+        if (!cancelled) setCitiesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerRegistrationOpen, form.stateId]);
+
+  const errors = useMemo(() => validateForm(form, citiesList), [form, citiesList]);
   const isValid = Object.keys(errors).length === 0;
 
   const shouldShow = (key) => touched[key] || submitError || false;
@@ -63,7 +144,6 @@ export default function SellerRegistrationModal() {
   if (!sellerRegistrationOpen) return null;
 
   if (auth?.role === 'seller') {
-    // If user is already seller, don’t keep modal open.
     closeSellerRegistration();
     return null;
   }
@@ -71,8 +151,7 @@ export default function SellerRegistrationModal() {
   const setField = (key) => (e) => {
     const value = e.target.value;
     setForm((prev) => {
-      // If state changes, reset city so it stays dependent.
-      if (key === 'state') return { ...prev, state: value, city: '' };
+      if (key === 'stateId') return { ...prev, stateId: value, cityId: '' };
       return { ...prev, [key]: value };
     });
     setTouched((prev) => ({ ...prev, [key]: true }));
@@ -83,36 +162,69 @@ export default function SellerRegistrationModal() {
     e.preventDefault();
     setSubmitError(null);
 
-    // Mark everything as touched so messages appear.
     setTouched({
       fullName: true,
       phone: true,
       email: true,
       address: true,
-      state: true,
-      city: true,
+      stateId: true,
+      cityId: true,
+      password: true,
     });
 
     if (!isValid) return;
 
+    const stateId = String(form.stateId || '').trim();
+    const cityId = String(form.cityId || '').trim();
+    if (!stateId || !cityId) {
+      setSubmitError('Please select state and city.');
+      return;
+    }
+
     try {
       setSubmitting(true);
+      const body = new FormData();
+      body.append('full_name', form.fullName.trim());
+      body.append('phone_number', digitsOnly(form.phone));
+      body.append('email', form.email.trim().toLowerCase());
+      body.append('password', form.password);
+      body.append('address', form.address.trim());
+      body.append('state_id', stateId);
+      body.append('city_id', cityId);
 
-      // Dummy store (local state for now).
-      const payload = {
-        id: `seller-${Date.now()}`,
-        fullName: form.fullName.trim(),
-        phone: digitsOnly(form.phone),
-        email: form.email.trim().toLowerCase(),
-        address: form.address.trim(),
-        state: form.state,
-        city: form.city,
-      };
+      const { data: result } = await axios.post(SOLAR_ENDPOINTS.STORE, body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
 
-      // Auto login as seller
-      loginAsSeller(payload);
+      if (result.success) {
+        closeSellerRegistration();
+        navigate('/register', {
+          state: {
+            role: 'partner',
+            pendingVerifyEmail: form.email.trim().toLowerCase(),
+          },
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      if (result.message && typeof result.message === 'object') {
+        const first = Object.values(result.message).flat().find((m) => typeof m === 'string');
+        setSubmitError(first || 'Registration failed. Please check your details.');
+      } else {
+        setSubmitError(result.message || 'Registration failed. Please try again.');
+      }
+      setSubmitting(false);
     } catch (err) {
-      setSubmitError(err?.message || 'Registration failed. Please try again.');
+      const apiMsg = err.response?.data?.message;
+      if (apiMsg && typeof apiMsg === 'object') {
+        const first = Object.values(apiMsg).flat().find((m) => typeof m === 'string');
+        setSubmitError(first || 'Registration failed. Please try again.');
+      } else if (typeof apiMsg === 'string') {
+        setSubmitError(apiMsg);
+      } else {
+        setSubmitError(err?.message || 'Registration failed. Please try again.');
+      }
       setSubmitting(false);
     }
   };
@@ -139,6 +251,7 @@ export default function SellerRegistrationModal() {
         </div>
 
         <form className="seller-modal-form" onSubmit={onSubmit}>
+          {locationsError && <div className="seller-form-error seller-form-error--global">{locationsError}</div>}
           <div className="seller-form-grid">
             <div className="seller-form-field">
               <label>Full Name *</label>
@@ -152,10 +265,11 @@ export default function SellerRegistrationModal() {
                 type="text"
                 className="form-control"
                 inputMode="numeric"
+                maxLength={10}
+                autoComplete="tel"
                 value={form.phone}
                 onChange={(e) => {
-                  // Allow typing but keep it numeric-ish for better UX.
-                  const value = e.target.value;
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                   setForm((prev) => ({ ...prev, phone: value }));
                   setTouched((prev) => ({ ...prev, phone: true }));
                   setSubmitError(null);
@@ -179,28 +293,65 @@ export default function SellerRegistrationModal() {
 
             <div className="seller-form-field">
               <label>State *</label>
-              <select className="form-control" value={form.state} onChange={setField('state')}>
-                <option value="">Select state</option>
-                {SELLER_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+              <select
+                className="form-control"
+                value={form.stateId}
+                onChange={setField('stateId')}
+                disabled={statesLoading || statesList.length === 0}
+              >
+                <option value="">{statesLoading ? 'Loading states…' : 'Select state'}</option>
+                {statesList.map((s) => (
+                  <option key={s.id} value={String(s.id)}>
+                    {s.name}
                   </option>
                 ))}
               </select>
-              {errors.state && shouldShow('state') && <div className="seller-form-error">{errors.state}</div>}
+              {errors.stateId && shouldShow('stateId') && <div className="seller-form-error">{errors.stateId}</div>}
             </div>
 
             <div className="seller-form-field">
               <label>City *</label>
-              <select className="form-control" value={form.city} onChange={setField('city')} disabled={!form.state}>
-                <option value="">Select city</option>
-                {stateCities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+              <select
+                className="form-control"
+                value={form.cityId}
+                onChange={setField('cityId')}
+                disabled={!form.stateId || citiesLoading}
+              >
+                <option value="">
+                  {!form.stateId ? 'Select state first' : citiesLoading ? 'Loading cities…' : 'Select city'}
+                </option>
+                {citiesList.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
                   </option>
                 ))}
               </select>
-              {errors.city && shouldShow('city') && <div className="seller-form-error">{errors.city}</div>}
+              {errors.cityId && shouldShow('cityId') && <div className="seller-form-error">{errors.cityId}</div>}
+            </div>
+
+            <div className="seller-form-field seller-form-field--full">
+              <label>Password *</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-control"
+                  value={form.password}
+                  onChange={setField('password')}
+                  autoComplete="new-password"
+                  style={{ paddingRight: 44 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={modalToggleEyeBtnStyle}
+                >
+                  <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden />
+                </button>
+              </div>
+              {errors.password && shouldShow('password') && (
+                <div className="seller-form-error">{errors.password}</div>
+              )}
             </div>
           </div>
 
@@ -210,10 +361,10 @@ export default function SellerRegistrationModal() {
             <button
               type="submit"
               className="site-button"
-              disabled={!isValid || submitting}
-              aria-disabled={!isValid || submitting}
+              disabled={!isValid || submitting || statesLoading}
+              aria-disabled={!isValid || submitting || statesLoading}
             >
-              <span>{submitting ? 'Submitting...' : 'Register & Login'}</span>
+              <span>{submitting ? 'Submitting...' : 'Register'}</span>
             </button>
             <button type="button" className="site-button-secondry" onClick={closeSellerRegistration}>
               Cancel
@@ -224,4 +375,3 @@ export default function SellerRegistrationModal() {
     </div>
   );
 }
-

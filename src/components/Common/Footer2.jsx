@@ -98,6 +98,7 @@ class Footer2 extends React.Component {
                                             <li><NavLink to={"/about-us"}>About</NavLink></li>
                                             <li><NavLink to={"/sellers"}>Sellers</NavLink></li>
                                             <li><NavLink to={"/solutions"}>Solutions</NavLink></li>
+                                            <li><NavLink to={"/solar-crm"}>Solar CRM</NavLink></li>
                                             <li><NavLink to={"/blog"}>Blog</NavLink></li>
                                             <li><NavLink to={"/contact-us"}>Contact Us</NavLink></li>
                                         </ul>

@@ -101,11 +101,26 @@ class Header2 extends React.Component {
                     .top-auth-link {
                         display: inline-block;
                         padding: 6px 2px;
-                        color: #fff;
+                        color: #fef3c7;
                         text-decoration: none;
                         font-weight: 500;
                         font-size: 15px;
                         transition: color 0.2s ease;
+                    }
+                    .top-auth-links button.top-auth-link {
+                        background: transparent;
+                        border: none;
+                        font: inherit;
+                        cursor: pointer;
+                        -webkit-appearance: none;
+                        appearance: none;
+                    }
+                    .top-auth-links button.top-auth-link:focus {
+                        outline: none;
+                    }
+                    .top-auth-links button.top-auth-link:focus-visible {
+                        outline: 2px solid #f59e0b;
+                        outline-offset: 2px;
                     }
                     .top-auth-link:hover,
                     .top-auth-link:focus,

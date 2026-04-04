@@ -73,6 +73,37 @@ a.get-in-touch-btn:hover {
   color: #fef3c7 !important;
 }
 
+/* Top bar uses <button> for "Become a Seller"; anchors get color above but buttons need explicit reset */
+.site-header .top-bar button.top-auth-link {
+  color: #fef3c7 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px 2px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.site-header .top-bar button.top-auth-link:hover {
+  color: var(--solar-primary) !important;
+}
+
+.site-header .top-bar button.top-auth-link:focus {
+  color: var(--solar-primary) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Keyboard only — avoid the heavy default ring on mouse click */
+.site-header .top-bar button.top-auth-link:focus-visible {
+  outline: 2px solid var(--solar-primary) !important;
+  outline-offset: 2px;
+}
+
 /* Separator titles */
 .sep-line-one {
   color: var(--solar-dark) !important;
@@ -193,6 +224,10 @@ a.get-in-touch-btn:hover {
   display: flex;
   flex-direction: column;
 }
+.solar-solution-vendor {
+  line-height: 1.35;
+  text-align: left;
+}
 .solar-solution-excerpt {
   flex: 1;
 }
@@ -207,6 +242,181 @@ a.get-in-touch-btn:hover {
 }
 .solar-solutions-page-section .solar-section-intro {
   margin-bottom: 2rem;
+}
+
+/* Solar CRM marketing page (/solar-crm) — unified cards, image object-fit: contain */
+.solar-crm-page {
+  background: linear-gradient(180deg, #f1f5f9 0%, #ffffff 18%, #f8fafc 55%, #fff7ed 100%);
+}
+.solar-crm-intro__badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--solar-primary-dark);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(22, 163, 74, 0.12) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 8px 18px;
+  border-radius: 999px;
+  margin-bottom: 1.25rem;
+}
+.solar-crm-intro__text {
+  color: #475569;
+  line-height: 1.7;
+  font-size: clamp(0.95rem, 1.6vw, 1.05rem);
+}
+.solar-crm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.solar-crm-feature-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.07);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.solar-crm-feature-card:hover {
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08), 0 16px 36px rgba(15, 23, 42, 0.1);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+.solar-crm-feature-card__grid {
+  align-items: stretch;
+}
+.solar-crm-feature-card__visual-col {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  padding: 0;
+}
+@media (max-width: 991.98px) {
+  .solar-crm-feature-card__visual-col {
+    order: -1;
+  }
+}
+.solar-crm-feature-card__visual {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 168px;
+  overflow: hidden;
+  background: #0f172a;
+}
+@media (min-width: 992px) {
+  .solar-crm-feature-card__visual {
+    min-height: 100%;
+    height: 100%;
+  }
+}
+.solar-crm-feature-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.45s ease;
+}
+.solar-crm-feature-card:hover .solar-crm-feature-card__img {
+  transform: scale(1.03);
+}
+.solar-crm-feature-card__visual-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(15, 23, 42, 0.25) 100%);
+  opacity: 0.9;
+}
+@media (min-width: 992px) {
+  .solar-crm-feature-card__visual-shade {
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.2) 0%, transparent 45%);
+  }
+  .solar-crm-feature-card--img-right .solar-crm-feature-card__visual-shade {
+    background: linear-gradient(270deg, rgba(15, 23, 42, 0.2) 0%, transparent 45%);
+  }
+}
+.solar-crm-feature-card__content-col {
+  display: flex;
+  align-items: stretch;
+}
+.solar-crm-feature-card__body {
+  flex: 1;
+  padding: 1.15rem 1.25rem 1.2rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 3px solid var(--solar-primary);
+}
+.solar-crm-feature-card--img-right .solar-crm-feature-card__body {
+  border-left: none;
+  border-right: 3px solid var(--solar-primary);
+}
+@media (max-width: 991.98px) {
+  .solar-crm-feature-card__body {
+    border-left: none;
+    border-right: none;
+    border-top: 3px solid var(--solar-primary);
+    padding: 1.1rem 1.2rem 1.15rem;
+  }
+  .solar-crm-feature-card--img-right .solar-crm-feature-card__body {
+    border-right: none;
+  }
+}
+.solar-crm-feature-card__step {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--solar-primary-dark);
+  margin-bottom: 0.4rem;
+}
+.solar-crm-feature-card__title {
+  font-weight: 800;
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  color: #0f172a;
+  line-height: 1.2;
+  margin-bottom: 0.55rem;
+}
+.solar-crm-feature-card__lead {
+  font-size: clamp(0.88rem, 1.35vw, 0.98rem);
+  line-height: 1.55;
+  color: #475569;
+  margin-bottom: 0.75rem !important;
+}
+.solar-crm-feature-card__list {
+  padding-top: 0;
+}
+.solar-crm-feature-card__list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #334155;
+  margin-bottom: 0.45rem;
+}
+.solar-crm-feature-card__list-item:last-child {
+  margin-bottom: 0;
+}
+.solar-crm-feature-card__bullet-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--solar-primary) 0%, var(--solar-primary-dark) 100%);
+  color: #fff;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
 }
 
 /* Sellers carousel (home) */
@@ -280,6 +490,58 @@ a.get-in-touch-btn:hover {
 .solar-seller-meta {
   font-size: 13px;
   color: #64748b;
+}
+
+/* Seller detail page (/sellers/:id) */
+.solar-seller-detail__breadcrumb {
+  font-size: 14px;
+}
+.solar-seller-detail__breadcrumb a {
+  color: var(--solar-primary-dark);
+  font-weight: 600;
+}
+.solar-seller-detail__breadcrumb a:hover {
+  color: var(--solar-green);
+}
+.solar-seller-detail__crumb-sep {
+  color: #94a3b8;
+  margin: 0 4px;
+}
+.solar-seller-detail__image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: middle;
+  max-height: 420px;
+  object-fit: cover;
+}
+.solar-seller-detail__expertise li {
+  font-size: 15px;
+  color: #334155;
+  line-height: 1.45;
+}
+.solar-seller-detail__service-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+.solar-seller-detail__service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1) !important;
+}
+.solar-seller-detail__service-img {
+  height: 160px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+.solar-seller-detail__service-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.solar-seller-detail__service-num {
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
 }
 
 /* Seller filters */
@@ -359,6 +621,54 @@ a.get-in-touch-btn:hover {
   color: var(--solar-primary-dark) !important;
 }
 
+/* Mobile drawer: "Become a Seller" is a <button>, so it never matched .nav > li > a (dark text on dark bg) */
+@media only screen and (max-width: 991px) {
+  .nav-transparent.mobile-sider-drawer-menu .header-nav.nav-dark {
+    background-color: #23252d !important;
+    border-right: none;
+    box-shadow: none;
+  }
+
+  .nav-dark.header-nav .nav > li.mobile-drawer-top-items > .mobile-nav-seller-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 50px;
+    text-align: left;
+    padding: 12px 15px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: capitalize;
+    font-family: inherit;
+    line-height: 1.4;
+    color: #fff !important;
+    background: transparent !important;
+    /* Must not use `border: none !important` — it kills the top divider like other nav rows */
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.2) !important;
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: none !important;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .nav-dark.header-nav .nav > li.mobile-drawer-top-items > .mobile-nav-seller-btn:hover,
+  .nav-dark.header-nav .nav > li.mobile-drawer-top-items > .mobile-nav-seller-btn:focus {
+    background-color: #23252d !important;
+    color: var(--solar-primary) !important;
+    outline: none;
+  }
+
+  .nav-dark.header-nav .nav > li.mobile-drawer-top-items > .mobile-nav-seller-btn:focus-visible {
+    outline: 2px solid var(--solar-primary);
+    outline-offset: -2px;
+  }
+}
+
 /* Login / Register: illustration matches form column height (lg+) */
 .login-page-illustration-wrap {
   flex: 1 1 auto;
@@ -371,6 +681,7 @@ a.get-in-touch-btn:hover {
   .login-page-illustration-wrap {
     min-height: 0;
   }
+
 }
 .login-page-illustration-wrap img {
   width: 100%;
@@ -380,14 +691,38 @@ a.get-in-touch-btn:hover {
   display: block;
 }
 
-/* Register role toggle: match solar theme colors */
+/* Register role toggle: stack on small screens, row on md+ */
+.solar-register-role-toggle {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  gap: 0;
+}
 .solar-register-role-toggle .solar-role-btn {
-  min-width: 180px;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 0;
   border: 1px solid var(--solar-primary);
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 2.8vw, 0.95rem);
   font-weight: 600;
   transition: all 0.2s ease;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  white-space: normal;
+  line-height: 1.25;
+}
+@media (max-width: 575.98px) {
+  .solar-register-role-toggle {
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  .solar-register-role-toggle .solar-role-btn {
+    width: 100%;
+    flex: none;
+    min-height: 48px;
+  }
 }
 .solar-register-role-toggle .solar-role-btn--active {
   background: var(--solar-primary);
@@ -401,5 +736,16 @@ a.get-in-touch-btn:hover {
 .solar-register-role-toggle .solar-role-btn--inactive:focus {
   background: #fff7ed;
   color: var(--solar-primary-dark);
+}
+
+/* Register page selects: readable options (black on white) */
+.solar-register-page select.form-control {
+  color: #1a1a1a;
+  background-color: #fff;
+  color-scheme: light;
+}
+.solar-register-page select.form-control option {
+  color: #1a1a1a;
+  background-color: #fff;
 }
 

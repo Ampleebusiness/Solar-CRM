@@ -171,7 +171,7 @@ function ContactUs() {
                 <Header2 />
                 <div className="page-content">
                     <Banner title="Contact Us Form" pagename="Contact us" description="Our Love for Architecture
-We are A Passionate Team Dedicated To Creating Stunning Architecture." bgimage={bnrimg}/>
+                     We are A Passionate Team Dedicated To Creating Stunning Architecture." bgimage={bnrimg}/>
                     {/* SECTION CONTENTG START */}
                     <div className="section-full p-tb80 inner-page-padding">
                         {/* LOCATION BLOCK*/}

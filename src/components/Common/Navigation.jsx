@@ -57,6 +57,7 @@ class Navigation extends React.Component {
                     </li>
                     <li><NavLink to={"/sellers"}>Sellers</NavLink></li>
                     <li><NavLink to={"/solutions"}>Solutions</NavLink></li>
+                    <li><NavLink to={"/solar-crm"}>Solar CRM</NavLink></li>
                     <li>
                         <NavLink to={"/blog"}>Blog</NavLink>
                         {/* <ul className="sub-menu">
@@ -91,8 +92,8 @@ class Navigation extends React.Component {
                             <li className="mobile-drawer-top-items">
                                 <button
                                     type="button"
+                                    className="mobile-nav-seller-btn"
                                     onClick={openSellerRegistration}
-                                    style={{ background: 'transparent', border: 0, padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}
                                 >
                                     Become a Seller
                                 </button>

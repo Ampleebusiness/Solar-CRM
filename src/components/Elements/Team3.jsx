@@ -9,6 +9,7 @@ function SellerCard({ item }) {
     <div className="our-team-2 solar-seller-card">
       <div className="profile-image">
         <img src={item.image} alt={item.membername} loading="lazy" decoding="async" />
+        {/* Social overlay on card image — hidden per request
         <div className="icons">
           <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
             <i className="fa fa-facebook" />
@@ -23,12 +24,14 @@ function SellerCard({ item }) {
             <i className="fa fa-linkedin" />
           </a>
         </div>
+        */}
       </div>
       <div className="figcaption text-black">
         <h4 className="m-t0">
-          <NavLink to="/contact-us">{item.membername}</NavLink>
+          <NavLink to={`/sellers/${item.id}`}>{item.membername}</NavLink>
         </h4>
         <span className="m-b0 sx-text-primary">{item.position}</span>
+        {/* Star rating — hidden per request
         <div className="m-t10 m-b10" aria-label={`${item.rating} out of 5 stars`}>
           {[1, 2, 3, 4, 5].map((s) => (
             <i
@@ -38,6 +41,7 @@ function SellerCard({ item }) {
             />
           ))}
         </div>
+        */}
         <p className="solar-seller-meta m-b5">
           <i className="fa fa-map-marker sx-text-primary m-r5" />
           {item.location}

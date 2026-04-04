@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import Header2 from '../Common/Header2';
 import Footer2 from '../Common/Footer2';
 import SEO from '../Common/SEO';
 import Banner from '../Elements/Banner';
 import { SOLAR_IMAGES } from '../../data/solarImages';
+import { AUTH_ENDPOINTS, SOLAR_ENDPOINTS } from '../../config/api';
+import { fetchSolarStates, fetchSolarCities } from '../../api/solarLocations';
 
 const bannerImg = require('./../../images/banner/6.jpg');
+
+function phoneDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function isValidIndiaMobile10(digits) {
+  return digits.length === 10 && /^[6-9]\d{9}$/.test(digits);
+}
 
 const registerToggleEyeBtnStyle = {
   position: 'absolute',
@@ -36,9 +47,16 @@ const Register = () => {
     email: '',
     city: '',
     timeline: '15 Days',
-    joinAs: 'Freelancer',
     password: '',
+    address: '',
+    sellerStateId: '',
+    sellerCityId: '',
   });
+  const [solarStatesList, setSolarStatesList] = useState([]);
+  const [solarCitiesList, setSolarCitiesList] = useState([]);
+  const [solarLocationsLoading, setSolarLocationsLoading] = useState(false);
+  const [solarCitiesLoading, setSolarCitiesLoading] = useState(false);
+  const [solarLocationsError, setSolarLocationsError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [showVerification, setShowVerification] = useState(false);
@@ -63,10 +81,82 @@ const Register = () => {
     };
   }, [showEmailVerifiedModal]);
 
+  useEffect(() => {
+    if (role !== 'partner') return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        setSolarLocationsLoading(true);
+        setSolarLocationsError(null);
+        const list = await fetchSolarStates();
+        if (!cancelled) setSolarStatesList(list);
+      } catch {
+        if (!cancelled) {
+          setSolarStatesList([]);
+          setSolarLocationsError('Could not load states. Please try again.');
+        }
+      } finally {
+        if (!cancelled) setSolarLocationsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
+  useEffect(() => {
+    if (role !== 'partner' || !formState.sellerStateId) {
+      setSolarCitiesList([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setSolarCitiesLoading(true);
+        const list = await fetchSolarCities(formState.sellerStateId);
+        if (!cancelled) setSolarCitiesList(list);
+      } catch {
+        if (!cancelled) setSolarCitiesList([]);
+      } finally {
+        if (!cancelled) setSolarCitiesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [role, formState.sellerStateId]);
+
+  useEffect(() => {
+    const pending = location.state?.pendingVerifyEmail;
+    if (!pending || typeof pending !== 'string') return undefined;
+    setRole('partner');
+    setRegisteredEmail(pending.trim());
+    setShowVerification(true);
+    setVerificationCode('');
+    navigate(location.pathname, { replace: true, state: { role: 'partner' } });
+    return undefined;
+  }, [location.state, location.pathname, navigate]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
+    if (name === 'sellerStateId') {
+      setFormState((prev) => ({ ...prev, sellerStateId: value, sellerCityId: '' }));
+    } else {
+      setFormState((prev) => ({ ...prev, [name]: value }));
+    }
+    if (error) setError(null);
+  };
+
+  const setRoleAndReset = (next) => {
+    setRole(next);
+    setFormState((prev) => ({
+      ...prev,
+      city: '',
+      sellerStateId: '',
+      sellerCityId: '',
+      address: '',
+    }));
+    setSolarCitiesList([]);
     if (error) setError(null);
   };
 
@@ -75,47 +165,95 @@ const Register = () => {
     setIsSubmitting(true);
     setError(null);
 
+    const mobile = phoneDigits(formState.phone);
+    if (!isValidIndiaMobile10(mobile)) {
+      setError('Phone: Enter a valid 10-digit Indian mobile number (starts with 6–9).');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (role === 'partner') {
+      const addr = String(formState.address || '').trim();
+      const stateId = String(formState.sellerStateId || '').trim();
+      const cityId = String(formState.sellerCityId || '').trim();
+      if (!addr) {
+        setError('Address is required for Solar Seller registration.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!stateId) {
+        setError('State is required.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!cityId || !solarCitiesList.some((c) => String(c.id) === cityId)) {
+        setError('Please select a valid city for the chosen state.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
-      // Create FormData for the request
+      if (role === 'partner') {
+        const addr = String(formState.address || '').trim();
+        const stateId = String(formState.sellerStateId || '').trim();
+        const cityId = String(formState.sellerCityId || '').trim();
+        const solarForm = new FormData();
+        solarForm.append('full_name', String(formState.name || '').trim());
+        solarForm.append('phone_number', mobile);
+        solarForm.append('email', String(formState.email || '').trim());
+        solarForm.append('password', formState.password);
+        solarForm.append('address', addr);
+        solarForm.append('state_id', stateId);
+        solarForm.append('city_id', cityId);
+
+        const { data: result } = await axios.post(SOLAR_ENDPOINTS.STORE, solarForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        if (result.success) {
+          setRegisteredEmail(String(formState.email || '').trim());
+          setVerificationCode('');
+          setShowVerification(true);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (result.message && typeof result.message === 'object') {
+          const first = Object.values(result.message).flat().find((m) => typeof m === 'string');
+          setError(first || 'Registration failed. Please check your details.');
+        } else {
+          setError(result.message || 'Registration failed. Please try again.');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('name', formState.name);
-      formData.append('phone', formState.phone);
+      formData.append('phone', mobile);
       formData.append('email', formState.email);
       formData.append('city', formState.city);
       formData.append('password', formState.password);
-      formData.append('user_type', role === 'normal' ? 'customer' : 'partner');
-      
-      // Add service type based on role
-      if (role === 'normal') {
-        // Map timeline to service type (15 Days = 15, 1 Month = 30, 2 Months = 60)
-        const serviceTypeMap = {
-          '15 Days': '15',
-          '1 Month': '30',
-          '2 Months': '60'
-        };
-        formData.append('our_service_type', serviceTypeMap[formState.timeline] || '15');
-      } else {
-        // For partner, use join_us field
-        formData.append('join_us', formState.joinAs);
-      }
+      formData.append('user_type', 'customer');
 
-      // Make API call
-      const response = await fetch('https://www.admin.infrioindia.com/api/v2/auth/register', {
-        method: 'POST',
-        body: formData
+      const serviceTypeMap = {
+        '15 Days': '15',
+        '1 Month': '30',
+        '2 Months': '60',
+      };
+      formData.append('our_service_type', serviceTypeMap[formState.timeline] || '15');
+
+      const { data: result } = await axios.post(AUTH_ENDPOINTS.REGISTER, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const result = await response.json();
-
       if (result.success && result.data) {
-        // Store registration data temporarily
         setRegisteredEmail(formState.email);
         setShowVerification(true);
         setIsSubmitting(false);
       } else {
-        // Handle errors
         if (result.message && typeof result.message === 'object') {
-          // Email already exists error
           if (result.message.email && Array.isArray(result.message.email)) {
             setError(result.message.email[0]);
           } else {
@@ -128,7 +266,15 @@ const Register = () => {
       }
     } catch (err) {
       console.error('Registration error:', err);
-      setError('Something went wrong. Please try again.');
+      const apiMsg = err.response?.data?.message;
+      if (apiMsg && typeof apiMsg === 'object') {
+        const first = Object.values(apiMsg).flat().find((m) => typeof m === 'string');
+        setError(first || 'Registration failed. Please check your details.');
+      } else if (typeof apiMsg === 'string') {
+        setError(apiMsg);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
       setIsSubmitting(false);
     }
   };
@@ -143,12 +289,11 @@ const Register = () => {
       formData.append('email', registeredEmail);
       formData.append('code', verificationCode);
 
-      const response = await fetch('https://www.admin.infrioindia.com/api/v2/auth/verify-email', {
-        method: 'POST',
-        body: formData
+      const response = await axios.post(AUTH_ENDPOINTS.VERIFY_EMAIL, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const result = await response.json();
+      const result = response.data;
 
       if (result.success && result.data) {
         // Store user info
@@ -164,13 +309,19 @@ const Register = () => {
           }));
 
           if (role === 'partner') {
+            const stateName =
+              solarStatesList.find((s) => String(s.id) === String(formState.sellerStateId))?.name || '';
+            const cityName =
+              solarCitiesList.find((c) => String(c.id) === String(formState.sellerCityId))?.name || '';
             localStorage.setItem('partnerInfo', JSON.stringify({
               id: result.data.id,
               name: result.data.name,
               email: result.data.email,
               phone: formState.phone,
-              city: formState.city,
-              joinAs: formState.joinAs
+              city: cityName,
+              address: formState.address,
+              state: stateName,
+              joinAs: 'Solar Seller'
             }));
           }
         }
@@ -183,7 +334,9 @@ const Register = () => {
       }
     } catch (err) {
       console.error('Verification error:', err);
-      setError('Something went wrong. Please try again.');
+      const apiMsg = err.response?.data?.message;
+      if (typeof apiMsg === 'string') setError(apiMsg);
+      else setError('Something went wrong. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -208,17 +361,56 @@ const Register = () => {
     </>
   );
 
-  const partnerFields = (
+  const partnerSellerFields = (
     <>
-      <div className="form-group">
-        <label>Join us as</label>
-        <select name="joinAs" className="form-control" value={formState.joinAs} onChange={handleChange}>
-          {['Freelancer', 'Architect', 'Interior Designer', 'Vendor', 'Others'].map((option) => (
-            <option value={option} key={option}>
-              {option}
+      {solarLocationsError && (
+        <div className="alert alert-warning" role="alert">
+          {solarLocationsError}
+        </div>
+      )}
+      <div className="form-row">
+        <div className="form-group col-md-6">
+          <label>State *</label>
+          <select
+            name="sellerStateId"
+            className="form-control"
+            value={formState.sellerStateId}
+            onChange={handleChange}
+            required={role === 'partner'}
+            disabled={solarLocationsLoading || solarStatesList.length === 0}
+          >
+            <option value="">{solarLocationsLoading ? 'Loading states…' : 'Select state'}</option>
+            {solarStatesList.map((s) => (
+              <option value={String(s.id)} key={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group col-md-6">
+          <label>City *</label>
+          <select
+            name="sellerCityId"
+            className="form-control"
+            value={formState.sellerCityId}
+            onChange={handleChange}
+            disabled={!formState.sellerStateId || solarCitiesLoading}
+            required={role === 'partner'}
+          >
+            <option value="">
+              {!formState.sellerStateId
+                ? 'Select state first'
+                : solarCitiesLoading
+                  ? 'Loading cities…'
+                  : 'Select city'}
             </option>
-          ))}
-        </select>
+            {solarCitiesList.map((c) => (
+              <option value={String(c.id)} key={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </>
   );
@@ -245,24 +437,28 @@ const Register = () => {
           <div className="container">
             <div className="row justify-content-center">
               <div className="col-lg-8 col-md-10">
-                <div className="bg-white p-a40 shadow rounded">
+                <div className="bg-white p-a40 shadow rounded solar-register-page">
                   <div className="text-center m-b30">
                     <h3>Create Your Account</h3>
-                    <p className="text-muted">Choose the account type that best describes you.</p>
-                    <div className="btn-group m-t15 solar-register-role-toggle" role="group">
+                    <p className="text-muted">
+                      {role === 'partner'
+                        ? 'Solar seller details match our Become a Seller signup. Password stays below.'
+                        : 'Choose the account type that best describes you.'}
+                    </p>
+                    <div className="m-t15 solar-register-role-toggle" role="group" aria-label="Account type">
                       <button
                         type="button"
                         className={`btn ${role === 'normal' ? 'solar-role-btn solar-role-btn--active' : 'solar-role-btn solar-role-btn--inactive'}`}
-                        onClick={() => setRole('normal')}
+                        onClick={() => setRoleAndReset('normal')}
                       >
                         Normal User
                       </button>
                       <button
                         type="button"
                         className={`btn ${role === 'partner' ? 'solar-role-btn solar-role-btn--active' : 'solar-role-btn solar-role-btn--inactive'}`}
-                        onClick={() => setRole('partner')}
+                        onClick={() => setRoleAndReset('partner')}
                       >
-                        Seller
+                        Solar Seller
                       </button>
                     </div>
                   </div>
@@ -286,16 +482,23 @@ const Register = () => {
                           <input
                             type="text"
                             name="phone"
-                            className={`form-control ${error && error.includes('phone') ? 'is-invalid' : ''}`}
+                            className={`form-control ${error && /phone/i.test(error) ? 'is-invalid' : ''}`}
                             value={formState.phone}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                              setFormState((prev) => ({ ...prev, phone: v }));
+                              if (error) setError(null);
+                            }}
+                            inputMode="numeric"
+                            maxLength={10}
+                            autoComplete="tel"
                             required
                           />
                         </div>
                       </div>
 
                       <div className="form-row">
-                        <div className="form-group col-md-6">
+                        <div className={`form-group ${role === 'normal' ? 'col-md-6' : 'col-md-6'}`}>
                           <label>Email</label>
                           <input
                             type="email"
@@ -309,20 +512,37 @@ const Register = () => {
                             <div className="invalid-feedback d-block">{error}</div>
                           )}
                         </div>
-                        <div className="form-group col-md-6">
-                          <label>City</label>
-                          <input
-                            type="text"
-                            name="city"
-                            className={`form-control ${error && error.includes('city') ? 'is-invalid' : ''}`}
-                            value={formState.city}
-                            onChange={handleChange}
-                            required
-                          />
-                        </div>
+                        {role === 'normal' ? (
+                          <div className="form-group col-md-6">
+                            <label>City</label>
+                            <input
+                              type="text"
+                              name="city"
+                              className={`form-control ${error && error.includes('city') ? 'is-invalid' : ''}`}
+                              value={formState.city}
+                              onChange={handleChange}
+                              required
+                            />
+                          </div>
+                        ) : (
+                        
+                          <div className="form-group col-md-6">
+                            <label>Address *</label>
+                            <input
+                              type="text"
+                              name="address"
+                              className="form-control"
+                              value={formState.address}
+                              onChange={handleChange}
+                              required={role === 'partner'}
+                              autoComplete="street-address"
+                            />
+                          </div>
+                        )
+                        }
                       </div>
 
-                      {role === 'normal' ? normalFields : partnerFields}
+                      {role === 'normal' ? normalFields : partnerSellerFields}
 
                       <div className="form-group">
                         <label>Password</label>
@@ -362,7 +582,9 @@ const Register = () => {
                     <div>
                       <div className="alert alert-success m-b20">
                         <i className="fa fa-check-circle m-r10"></i>
-                        Registration successful! Please verify your email.
+                        {role === 'partner'
+                          ? 'OTP sent to your email. Enter the code below to verify.'
+                          : 'Registration successful! Please verify your email.'}
                       </div>
                       <form onSubmit={handleVerificationSubmit}>
                         <div className="form-group">

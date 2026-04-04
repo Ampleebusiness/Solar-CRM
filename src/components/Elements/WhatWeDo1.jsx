@@ -21,10 +21,14 @@ export function SolutionsGrid({ items, showReadMore, cardClassName, detailMode }
             <div className="solar-solution-card__img-wrap">
               <img src={sol.image} alt={sol.title} loading="lazy" decoding="async" />
             </div>
-            <div className="figcaption bg-white text-center p-a20">
+            <div className="figcaption bg-white p-a20 text-left">
+              {sol.vendorName && (
+                <p className="m-t0 m-b5 font-13 solar-solution-vendor">
+                   <span className="sx-text-primary font-weight-600">{sol.vendorName}</span>
+                </p>
+              )}
               <h4 className="m-a0">{sol.title}</h4>
-              <p className="m-t10 m-b0 font-14 text-left solar-solution-excerpt">{detailMode ? sol.description : sol.short}</p>
-             
+              <p className="m-t10 m-b0 font-14 solar-solution-excerpt">{detailMode ? sol.description : sol.short}</p>
             </div>
             {/* <div className="figcaption-number text-center sx-text-primary animate-in-to-top-content">
               <span>{sol.num}</span>

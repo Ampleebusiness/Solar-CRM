@@ -1,13 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Home2 from './Pages/Home2';
-import Home3 from './Pages/Home3';
-import Home4 from './Pages/Home4';
-import Home5 from './Pages/Home5';
-import Home6 from './Pages/Home6';
+
 
 import About1 from './Pages/About1';
-import About2 from './Pages/About2';
 
 import Services1 from './Pages/Services1';
 import Services2 from './Pages/Services2';
@@ -43,7 +39,6 @@ import ProjectCorousel from './Pages/ProjectCorousel';
 import ProjectDetail1 from './Pages/ProjectDetail1';
 import ProjectDetail2 from './Pages/ProjectDetail2';
 import ShowcaseLanding from './Pages/ShowcaseLanding';
-import InfrioChoice from './Pages/InfrioChoice';
 import Login from './Pages/Login';
 import Register from './Pages/Register';
 import ForgotPassword from './Pages/ForgotPassword';
@@ -69,7 +64,9 @@ import ProtectedRoute from './Common/ProtectedRoute';
 import UserAccount from './Pages/UserAccount';
 import PartnerAccount from './Pages/PartnerAccount';
 import Sellers from './Pages/Sellers';
+import SellerDetail from './Pages/SellerDetail';
 import Solutions from './Pages/Solutions';
+import SolarCrm from './Pages/SolarCrm';
 import { AuthProvider } from '../context/AuthContext';
 import SellerRegistrationModal from './Elements/SellerRegistrationModal';
 import SellerProtectedRoute from './Common/SellerProtectedRoute';
@@ -95,13 +92,9 @@ class Components extends React.Component {
                         <Routes>
                             <Route path='/' element={<Home2/>} />
                             <Route path='/home-2' element={<Home2/>} />
-                            <Route path='/home-3' element={<Home3/>} />
-                            <Route path='/home-4' element={<Home4/>} />
-                            <Route path='/home-5' element={<Home5/>} />
-                            <Route path='/home-6' element={<Home6/>} />
+                          
 
                             <Route path='/about-us' element={<About1/>} />
-                            <Route path='/about-2' element={<About2/>} />
 
                             <Route path='/services' element={<Services1/>} />
                             <Route path='/services-2' element={<Services2/>} />
@@ -125,7 +118,6 @@ class Components extends React.Component {
                             <Route path='/project-grid-4-columns-no-gap' element={<ProjectGridNoGap4/>} />
                             <Route path='/showcase' element={<ShowcaseLanding/>} />
                             <Route path='/project-grid-5-columns' element={<ProjectGrid5/>} />
-                            <Route path='/infrio-choice' element={<InfrioChoice/>} />
                             <Route path='/project-grid-5-columns-no-gap' element={<ProjectGridNoGap5/>} />
 
                             <Route path='/project-masonry-3-columns' element={<ProjectMasonary3/>} />
@@ -149,7 +141,9 @@ class Components extends React.Component {
                             <Route path='/post-right-sidebar' element={<PostRightSidebar/>} />
 
                             <Route path='/sellers' element={<Sellers/>} />
+                            <Route path='/sellers/:sellerId' element={<SellerDetail />} />
                             <Route path='/solutions' element={<Solutions/>} />
+                            <Route path='/solar-crm' element={<SolarCrm />} />
 
                             <Route
                               path='/seller-dashboard'

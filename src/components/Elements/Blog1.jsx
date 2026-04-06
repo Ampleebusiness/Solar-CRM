@@ -1,125 +1,138 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { SOLAR_BLOG_DUMMY } from '../../data/solarBlogDummy';
+import { fetchSolarBlogList, parseSolarBlogListResponse } from '../../api/solarBlog';
+import { fetchAuthBlogList, parseAuthBlogListResponse } from '../../api/authBlog';
+import { useAuth } from '../../context/AuthContext';
 
-const blogs = [
-    {
-        image: require('./../../images/blog/blog-grid/pic4.jpg'),
-        title: 'We’ll nail your next project, because nobody wants...',
-        author: 'John',
-        date: '5',
-        month: 'SEP',
-        comments: '5 Comment'
-    },
-    {
-        image: require('./../../images/blog/blog-grid/pic2.jpg'),
-        title: 'Flooring Pro\'s Secrets That Can Raise Your Home Value...',
-        author: 'John',
-        date: '25',
-        month: 'SEP',
-        comments: '5 Comment'
-    },
-    {
-        image: require('./../../images/blog/blog-grid/pic3.jpg'),
-        title: 'Best Laminate & Hardwood Flooring Trends For 2019...',
-        author: 'John',
-        date: '5',
-        month: 'SEP',
-        comments: '5 Comment'
-    }
-]
+const bgimg1 = require('./../../images/background/cross-line2.png');
+const BLOG_FALLBACK_IMAGE = require('./../../images/blog/default/thum1.jpg');
+const HOME_BLOG_COUNT = 3;
+const PER_PAGE = 20;
 
-var bgimg1 = require('./../../images/background/cross-line2.png');
+export default function Blog1() {
+  const { auth } = useAuth();
+  const isSeller = auth?.role === 'seller';
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-class Blog1 extends React.Component {
-     constructor(props) {
-        super(props);
-        this.state = {
-            apiData: [],   // API ka data save karne ke liye
-            loading: true, // loading state
-            error: null    // error handle karne ke liye
-        };
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        if (isSeller) {
+          const raw = await fetchSolarBlogList({ page: 1, perPage: PER_PAGE });
+          const { ok, items } = parseSolarBlogListResponse(raw, 1, PER_PAGE);
+          const list = Array.isArray(items) ? items : [];
+          if (!cancelled) setPosts(ok || list.length ? list : []);
+        } else {
+          const raw = await fetchAuthBlogList();
+          const { ok, items } = parseAuthBlogListResponse(raw);
+          const list = Array.isArray(items) ? items : [];
+          if (!cancelled) setPosts(ok || list.length ? list : []);
+        }
+      } catch {
+        if (!cancelled) setPosts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSeller]);
 
-    componentDidMount() {
-        const requestOptions = {
-            //  mode: 'no-cors',
-            method: "GET",
-            headers: {
-      "Content-Type": "application/json",
-    },
-        };
+  const display =
+    posts.length > 0
+      ? posts.slice(0, HOME_BLOG_COUNT)
+      : !loading
+        ? SOLAR_BLOG_DUMMY.slice(0, HOME_BLOG_COUNT)
+        : [];
 
-        fetch("https://www.admin.infrioindia.com/api/v2/auth/blog-list", requestOptions)
-            .then((response) => response.json()) // response ko JSON me convert
-            .then((result) => {
-                console.log("API Result:", result);
-                this.setState({ apiData: result.data, loading: false });
-            })
-            .catch((error) => {
-                console.error("API Error: Lakshay", error);
-                this.setState({ error: error, loading: false });
-            });
-    }
-
-
-    render() {
-         const { apiData, loading, error } = this.state;
-        return (
-            <>
-                <div className="section-full mobile-page-padding bg-white p-t30 p-b50 mobile-page-padding">
-                        <div className="container">
-                            {/* TITLE START */}
-                            <div className="section-head">
-                                <div className="sx-separator-outer separator-center">
-                                    <div className="sx-separator bg-white bg-moving bg-repeat-x" style={{ backgroundImage: 'url(' + bgimg1 + ')' }}>
-                                        <h3 className="sep-line-one">Blog</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* TITLE END */}
-                            {/* IMAGE CAROUSEL START */}
-                            <div className="section-content">
-                                <div className="row justify-content-center">
-                                {apiData.slice(0,3).map((item, index) => (
-                                    <div className="col-lg-4 col-md-6 col-sm-12" key={index}>
-                                    <div className="blog-post blog-grid date-style-2">
-                                            <div className="sx-post-media sx-img-effect img-reflection">
-                                                <NavLink to={"/blog-detail"} state={{ id: item.id}}><img src={item.banner} alt="" /></NavLink>
-                                            </div>
-                                            <div className="sx-post-info p-t30">
-                                                {/* <div className="sx-post-meta ">
-                                                    <ul>
-                                                        <li className="post-date"><strong>{item.date}</strong> <span>{item.month}</span> </li>
-                                                        <li className="post-author"><NavLink to={"/blog-single"}>By <span>{item.author}</span></NavLink> </li>
-                                                        <li className="post-comment"> <NavLink to={"/blog-single"}>{item.comments}</NavLink> </li>
-                                                    </ul>
-                                                </div> */}
-                                                <div className="sx-post-title ">
-                                                    <h4 className="post-title" style={{
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
-    }}><NavLink to={"/blog-detail"} state={{ id: item.id}} >{item.title}</NavLink></h4>
-                                                </div>
-                                                <div className="sx-post-readmore">
-                                                    <NavLink to={"/blog-detail"} state={{ id: item.id}} title="READ MORE" rel="bookmark" className="site-button-link">View More</NavLink>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                               </div>
-                            </div>
+  return (
+    <>
+      <div className="section-full mobile-page-padding bg-white p-t30 p-b50 mobile-page-padding">
+        <div className="container">
+          <div className="section-head">
+            <div className="sx-separator-outer separator-center">
+              <div
+                className="sx-separator bg-white bg-moving bg-repeat-x"
+                style={{ backgroundImage: `url(${bgimg1})` }}
+              >
+                <h3 className="sep-line-one">Blog</h3>
+              </div>
+            </div>
+          </div>
+          <div className="section-content">
+            {loading && (
+              <div className="row justify-content-center">
+                <div className="col-12 text-center p-t20 p-b20">
+                  <p className="text-muted">Loading posts…</p>
+                </div>
+              </div>
+            )}
+            <div className="row justify-content-center">
+              {!loading &&
+                display.map((item, index) => (
+                  <div className="col-lg-4 col-md-6 col-sm-12" key={item?.id ?? index}>
+                    <div className="blog-post blog-grid date-style-2">
+                      <div className="sx-post-media sx-img-effect img-reflection">
+                        <NavLink
+                          to={item?.id != null ? `/blog-detail/${item.id}` : '/blog-detail'}
+                          state={{ id: item?.id }}
+                        >
+                          <img
+                            src={item?.banner || BLOG_FALLBACK_IMAGE}
+                            alt={item?.title || ''}
+                            onError={(e) => {
+                              e.currentTarget.src = BLOG_FALLBACK_IMAGE;
+                            }}
+                          />
+                        </NavLink>
+                      </div>
+                      <div className="sx-post-info p-t30">
+                        <div className="sx-post-title ">
+                          <h4
+                            className="post-title"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            <NavLink
+                              to={item?.id != null ? `/blog-detail/${item.id}` : '/blog-detail'}
+                              state={{ id: item?.id }}
+                            >
+                              {item?.title}
+                            </NavLink>
+                          </h4>
                         </div>
-                        <div className="hilite-title text-left text-uppercase">
-                            <strong>Blog</strong>
+                        <div className="sx-post-readmore">
+                          <NavLink
+                            to={item?.id != null ? `/blog-detail/${item.id}` : '/blog-detail'}
+                            state={{ id: item?.id }}
+                            title="READ MORE"
+                            rel="bookmark"
+                            className="site-button-link"
+                          >
+                            View More
+                          </NavLink>
                         </div>
+                      </div>
                     </div>
-            </>
-        );
-    }
-};
-
-export default Blog1;
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+        <div className="hilite-title text-left text-uppercase">
+          <strong>Blog</strong>
+        </div>
+      </div>
+    </>
+  );
+}

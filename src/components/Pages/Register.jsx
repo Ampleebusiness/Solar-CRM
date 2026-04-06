@@ -64,6 +64,8 @@ const Register = () => {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailVerifiedModal, setShowEmailVerifiedModal] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState(null);
 
   const goToLoginAfterVerify = useCallback(() => {
     setShowEmailVerifiedModal(false);
@@ -283,45 +285,64 @@ const Register = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setResendMessage(null);
 
     try {
-      const formData = new FormData();
-      formData.append('email', registeredEmail);
-      formData.append('code', verificationCode);
+      const isSolarSeller = role === 'partner';
+      let result;
 
-      const response = await axios.post(AUTH_ENDPOINTS.VERIFY_EMAIL, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      const result = response.data;
+      if (isSolarSeller) {
+        const formData = new FormData();
+        formData.append('email', registeredEmail);
+        formData.append('otp', String(verificationCode || '').trim());
+        const response = await axios.post(SOLAR_ENDPOINTS.VERIFY_OTP, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        result = response.data;
+      } else {
+        const formData = new FormData();
+        formData.append('email', registeredEmail);
+        formData.append('code', verificationCode);
+        const response = await axios.post(AUTH_ENDPOINTS.VERIFY_EMAIL, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        result = response.data;
+      }
 
       if (result.success && result.data) {
-        // Store user info
         if (typeof window !== 'undefined') {
-          localStorage.setItem('userInfo', JSON.stringify({
-            id: result.data.id,
-            name: result.data.name,
-            email: result.data.email,
-            phone: formState.phone,
-            city: formState.city,
-            user_type: result.data.user_type || (role === 'normal' ? 'customer' : 'partner'),
-            email_verified_at: result.data.email_verified_at
-          }));
-
-          if (role === 'partner') {
-            const stateName =
-              solarStatesList.find((s) => String(s.id) === String(formState.sellerStateId))?.name || '';
-            const cityName =
-              solarCitiesList.find((c) => String(c.id) === String(formState.sellerCityId))?.name || '';
+          if (isSolarSeller) {
+            const d = result.data;
+            const uid = d.solar_user_id ?? d.id;
+            localStorage.setItem('userInfo', JSON.stringify({
+              id: uid,
+              name: d.full_name ?? d.name,
+              email: d.email,
+              phone: d.phone_number ?? formState.phone,
+              city: d.city ?? '',
+              user_type: d.user_type || 'partner',
+              email_verified_at: d.email_verified_at,
+            }));
             localStorage.setItem('partnerInfo', JSON.stringify({
+              id: uid,
+              name: d.full_name ?? d.name,
+              email: d.email,
+              phone: d.phone_number ?? formState.phone,
+              city: d.city ?? '',
+              address: d.address ?? formState.address,
+              state: d.state_name ?? d.state ?? '',
+              joinAs: 'Solar Seller',
+              email_verified_at: d.email_verified_at,
+            }));
+          } else {
+            localStorage.setItem('userInfo', JSON.stringify({
               id: result.data.id,
               name: result.data.name,
               email: result.data.email,
               phone: formState.phone,
-              city: cityName,
-              address: formState.address,
-              state: stateName,
-              joinAs: 'Solar Seller'
+              city: formState.city,
+              user_type: result.data.user_type || 'customer',
+              email_verified_at: result.data.email_verified_at,
             }));
           }
         }
@@ -338,6 +359,36 @@ const Register = () => {
       if (typeof apiMsg === 'string') setError(apiMsg);
       else setError('Something went wrong. Please try again.');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!registeredEmail) return;
+    setResendLoading(true);
+    setError(null);
+    setResendMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append('email', registeredEmail);
+      const url =
+        role === 'partner' ? SOLAR_ENDPOINTS.RESEND_OTP : AUTH_ENDPOINTS.RESEND_OTP;
+      const { data } = await axios.post(url, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (data.success) {
+        setResendMessage(
+          typeof data.message === 'string' && data.message
+            ? data.message
+            : 'Code sent. Check your email.',
+        );
+      } else {
+        setError(data.message || 'Could not resend code.');
+      }
+    } catch (err) {
+      const apiMsg = err.response?.data?.message;
+      setError(typeof apiMsg === 'string' ? apiMsg : 'Could not resend code. Please try again.');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -588,9 +639,9 @@ const Register = () => {
                       </div>
                       <form onSubmit={handleVerificationSubmit}>
                         <div className="form-group">
-                          <label>Verification Code</label>
+                          <label>{role === 'partner' ? 'OTP' : 'Verification Code'}</label>
                           <p className="text-muted small m-b10">
-                            We've sent a verification code to <strong>{registeredEmail}</strong>. Please enter it below.
+                            We&apos;ve sent a code to <strong>{registeredEmail}</strong>. Enter it below.
                           </p>
                           <input
                             type="text"
@@ -598,14 +649,23 @@ const Register = () => {
                             style={{ fontSize: '24px', letterSpacing: '8px', fontWeight: 'bold' }}
                             value={verificationCode}
                             onChange={(e) => {
-                              setVerificationCode(e.target.value);
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 5);
+                              setVerificationCode(v);
                               if (error) setError(null);
                             }}
                             placeholder="Enter 5-digit code"
-                            maxLength="5"
+                            maxLength={5}
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
                             required
                           />
                         </div>
+
+                        {resendMessage && (
+                          <div className="alert alert-info m-b15" role="status">
+                            {resendMessage}
+                          </div>
+                        )}
 
                         {error && (
                           <div className="alert alert-danger" role="alert">
@@ -617,7 +677,18 @@ const Register = () => {
                           <span>{isSubmitting ? 'Verifying...' : 'Verify Email'}</span>
                         </button>
 
-                        <div className="text-center m-t20">
+                        <div className="text-center m-t15">
+                          <button
+                            type="button"
+                            className="btn btn-link"
+                            disabled={resendLoading}
+                            onClick={handleResendCode}
+                          >
+                            {resendLoading ? 'Sending…' : 'Resend code'}
+                          </button>
+                        </div>
+
+                        <div className="text-center m-t10">
                           <button
                             type="button"
                             className="btn btn-link"
@@ -625,6 +696,7 @@ const Register = () => {
                               setShowVerification(false);
                               setVerificationCode('');
                               setError(null);
+                              setResendMessage(null);
                             }}
                           >
                             Back to Registration

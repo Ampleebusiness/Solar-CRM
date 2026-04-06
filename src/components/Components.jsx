@@ -137,6 +137,7 @@ class Components extends React.Component {
                             <Route path='/blog' element={<BlogGrid/>} />
                             <Route path='/blog-listing' element={<BlogListing/>} />
                             <Route path='/blog-masonry' element={<BlogMasonary/>} />
+                            <Route path='/blog-detail/:blogId' element={<BlogSingle/>} />
                             <Route path='/blog-detail' element={<BlogSingle/>} />
                             <Route path='/post-right-sidebar' element={<PostRightSidebar/>} />
 

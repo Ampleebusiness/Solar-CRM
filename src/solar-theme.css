@@ -749,3 +749,12 @@ a.get-in-touch-btn:hover {
   background-color: #fff;
 }
 
+/* Footer “Designed by” credit — matches light text on dark bar */
+.footer-credit-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.footer-credit-link:hover {
+  opacity: 0.9;
+}

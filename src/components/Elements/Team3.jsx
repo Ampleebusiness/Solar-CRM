@@ -1,8 +1,80 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { SELLERS, SELLER_LOCATIONS } from '../../data/solarData';
+import { useAuth } from '../../context/AuthContext';
+import {
+  fetchSolarUsersList,
+  parseSolarUsersResponse,
+  mapApiSellerToCard,
+} from '../../api/solarUsers';
 
 var bgimg1 = require('./../../images/background/cross-line2.png');
+
+const HOME_SELLERS_PER_PAGE = 12;
+
+/** Same rules as /sellers: `solar_user_id` only when logged-in solar seller. */
+function TrustedSellersHomeCarousel({ scrollRef, onScrollPrev, onScrollNext }) {
+  const { auth } = useAuth();
+  const solarUserId = useMemo(() => {
+    if (auth?.role !== 'seller') return null;
+    const id = auth?.userId;
+    if (id == null || id === '') return null;
+    return String(id);
+  }, [auth?.role, auth?.userId]);
+
+  const [members, setMembers] = useState(SELLERS);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await fetchSolarUsersList({
+          page: 1,
+          perPage: HOME_SELLERS_PER_PAGE,
+          solarUserId,
+        });
+        const { items } = parseSolarUsersResponse(raw, 1, HOME_SELLERS_PER_PAGE);
+        const cards = items.map((it, i) => mapApiSellerToCard(it, i));
+        if (!cancelled) {
+          setMembers(cards.length > 0 ? cards : SELLERS);
+        }
+      } catch {
+        if (!cancelled) setMembers(SELLERS);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [solarUserId]);
+
+  return (
+    <div className="position-relative solar-sellers-carousel-wrap">
+      <button
+        type="button"
+        className="solar-carousel-nav solar-carousel-nav--prev"
+        onClick={onScrollPrev}
+        aria-label="Previous sellers"
+      >
+        <i className="fa fa-angle-left" />
+      </button>
+      <button
+        type="button"
+        className="solar-carousel-nav solar-carousel-nav--next"
+        onClick={onScrollNext}
+        aria-label="Next sellers"
+      >
+        <i className="fa fa-angle-right" />
+      </button>
+      <div className="sellers-scroll-track" ref={scrollRef}>
+        {members.map((item) => (
+          <div className="sellers-scroll-item" key={item.id}>
+            <SellerCard item={item} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SellerCard({ item }) {
   return (
@@ -153,31 +225,11 @@ class Team3 extends React.Component {
             )}
 
             {isHome ? (
-              <div className="position-relative solar-sellers-carousel-wrap">
-                <button
-                  type="button"
-                  className="solar-carousel-nav solar-carousel-nav--prev"
-                  onClick={() => this.scrollByDir(-1)}
-                  aria-label="Previous sellers"
-                >
-                  <i className="fa fa-angle-left" />
-                </button>
-                <button
-                  type="button"
-                  className="solar-carousel-nav solar-carousel-nav--next"
-                  onClick={() => this.scrollByDir(1)}
-                  aria-label="Next sellers"
-                >
-                  <i className="fa fa-angle-right" />
-                </button>
-                <div className="sellers-scroll-track" ref={this.scrollRef}>
-                  {members.map((item) => (
-                    <div className="sellers-scroll-item" key={item.id}>
-                      <SellerCard item={item} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <TrustedSellersHomeCarousel
+                scrollRef={this.scrollRef}
+                onScrollPrev={() => this.scrollByDir(-1)}
+                onScrollNext={() => this.scrollByDir(1)}
+              />
             ) : (
               <div className="row team-item-four solar-sellers-grid-page">
                 {members.length === 0 ? (
